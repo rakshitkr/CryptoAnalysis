@@ -1220,4 +1220,13 @@ public class UsagePatternTest extends UsagePatternTestingFramework {
 		Assertions.notHasEnsuredPredicate(s); 
 		Assertions.mustNotBeInAcceptingState(s); 
 	}
+	
+	@Test
+	public void generateSecureRandom() throws GeneralSecurityException {
+	       byte[] seed = {1, 3};
+	       SecureRandom secureRandom = new SecureRandom(seed);
+	       Assertions.mustBeInAcceptingState(secureRandom);
+	       Assertions.notHasEnsuredPredicate(secureRandom);
+	   }
+	
 }
