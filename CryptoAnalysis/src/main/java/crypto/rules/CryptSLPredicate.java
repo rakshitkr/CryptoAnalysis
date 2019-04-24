@@ -28,33 +28,42 @@ public class CryptSLPredicate extends CryptSLLiteral implements java.io.Serializ
 		this.optConstraint = constraint;
 	}
 
+	
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
+		result = prime * result + ((baseObject == null) ? 0 : baseObject.hashCode());
+		result = prime * result + ((parameters == null) ? 0 : parameters.hashCode());
 		result = prime * result + ((predName == null) ? 0 : predName.hashCode());
 		return result;
 	}
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj) {
+		if (this == obj)
 			return true;
-		}
-		if (obj == null) {
+		if (obj == null)
 			return false;
-		}
-		if (!(obj instanceof CryptSLPredicate)) {
+		if (getClass() != obj.getClass())
 			return false;
-		}
 		CryptSLPredicate other = (CryptSLPredicate) obj;
-		if (predName == null) {
-			if (other.predName != null) {
+		if (baseObject == null) {
+			if (other.baseObject != null)
 				return false;
-			}
-		} else if (!predName.equals(other.predName)) {
+		} else if (!baseObject.equals(other.baseObject))
 			return false;
-		}
+		if (parameters == null) {
+			if (other.parameters != null)
+				return false;
+		} else if (!parameters.equals(other.parameters))
+			return false;
+		if (predName == null) {
+			if (other.predName != null)
+				return false;
+		} else if (!predName.equals(other.predName))
+			return false;
 		return true;
 	}
 
