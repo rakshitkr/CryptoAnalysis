@@ -8,16 +8,20 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import crypto.cryslhandler.CrySLModelReader;
+import crypto.exceptions.CryptoAnalysisException;
+
 
 public class CrySLRuleReader {
+	
 	private static CrySLModelReader csmr;
-
+	
 	private static CrySLModelReader getReader(){
 		if (csmr == null)
 		{
@@ -26,70 +30,97 @@ public class CrySLRuleReader {
 			}
 			catch (MalformedURLException e){
 				e.printStackTrace();
-				// Sebastian:
-				// TODO: Current code could cause a NullPointerException
-				// Question: Is this Exception ever likely to happen?
-				// If no: Swallow it and 'accept' the NullPointerException
-				// If it can happen: Maybe we should re-throw a different exception (with this as the inner exception)
-				// Reason: In both cases (either NullPointerException or a custom) the creation of CryptSLRules
-				// is impossible if the MalformedURLException was thrown. So instead of allowing a generic NullPointerException
-				// we could throw something new that could be caught.
 			}
 		}
 		return csmr;
 	}
 
-	public static CrySLRule readFromSourceFile(File file) {
+	/**
+	 * Returns a {@link CrySLRule} read from a single CrySL file.
+	 * 
+	 * @param file the CrySL file
+	 * @return the {@link CrySLRule} object
+	 * @throws CryptoAnalysisException Throws when a file could not get processed to a {@link CrySLRule}
+	 */
+	public static CrySLRule readFromSourceFile(File file) throws CryptoAnalysisException {
 		return getReader().readRule(file);
 	}
 
-	public static List<CrySLRule> readFromDirectory(File directory) {
+	/**
+	 * Returns a {@link List} of {@link CrySLRule} objects read from a directory
+	 * 
+	 * @param directory the {@link File} with the directory where the rules are located
+	 * @return the {@link List} with {@link CrySLRule} objects. If no rules are found it returns an empty list.
+	 * @throws CryptoAnalysisException Throws when a file could not get processed to a {@link CrySLRule}
+	 */
+	public static List<CrySLRule> readFromDirectory(File directory) throws CryptoAnalysisException {
 		return readFromDirectory(directory, false);
 	}
 
-	public static List<CrySLRule> readFromDirectory(File directory, boolean recursive) {
+	/**
+	 * Returns a {@link List} of {@link CrySLRule} objects read from a directory.
+	 * In the case the directory contains further sub directories, they can also searched 
+	 * if the recursive argument is <code>true</code>.
+	 * 
+	 * @param directory the {@link File} with the directory where the rules are located
+	 * @param recursive <code>true</code> the subfolders will be searched too
+	 * @return the {@link List} with {@link CrySLRule} objects. If no rules are found it returns an empty list.
+	 * @throws CryptoAnalysisException Throws when a file could not get processed to a {@link CrySLRule}
+	 */
+	public static List<CrySLRule> readFromDirectory(File directory, boolean recursive) throws CryptoAnalysisException {
+		Map<String, CrySLRule> ruleMap = new HashMap<String, CrySLRule>();
+
 		if (!directory.exists() || !directory.isDirectory())
-			return new ArrayList<>();
+			throw new CryptoAnalysisException("The specified path is not a directory " + directory.getAbsolutePath());
 
 		List<File> cryptSLFiles = new ArrayList<>();
 		findCryptSLFiles(directory, recursive, cryptSLFiles);
-		if (cryptSLFiles.size() == 0)
-			return new ArrayList<>();
 
 		CrySLModelReader reader = getReader();
-		List<CrySLRule> rules = new ArrayList<>();
-		for (File file :cryptSLFiles)
-			rules.add(reader.readRule(file));
+		for (File file : cryptSLFiles) {
+			CrySLRule rule = reader.readRule(file);
 
-		// TODO: Decide what happens with potential duplicates
-		return rules.stream().filter((x) -> x != null).collect(Collectors.toList());
+			if(rule != null) {
+				if(!ruleMap.containsKey(rule.getClassName())) {
+					ruleMap.put(rule.getClassName(), rule);
+				}
+			}
+		}
+		
+		return new ArrayList<>(ruleMap.values());
 	}
 
-	// TODO: Discuss about .zip layout: Only Root or allow recursive.
-	// TODO: Discuss whether to throw IOExceptions or not
-	public static List<CrySLRule> readFromZipFile(File file) {
+	/**
+	 * Returns a {@link List} of {@link CrySLRule} objects read from a Zip {@link File}.
+	 * @param file Zip that contains the CrySL files
+	 * @return the {@link List} with {@link CrySLRule} objects. If no rules are found it returns an empty list.
+	 * @throws CryptoAnalysisException 
+	 */
+	public static List<CrySLRule> readFromZipFile(File file) throws CryptoAnalysisException {
 		if (!file.exists() || !file.isFile() || !file.getName().endsWith(".zip"))
-			return new ArrayList<>();
+			throw new CryptoAnalysisException("The specified path is not a ZIP file " + file.getAbsolutePath());
 
-		List<CrySLRule> rules = new ArrayList<>();
-
+		Map<String, CrySLRule> ruleMap = new HashMap<String, CrySLRule>();
 		try {
 			ZipFile zip = new ZipFile(file);
 			for (Enumeration e = zip.entries(); e.hasMoreElements(); ) {
 				ZipEntry entry = (ZipEntry) e.nextElement();
 				if (!entry.isDirectory()) {
 					CrySLRule rule = getCrySLRuleFromZipEntry(entry, zip, file);
-					rules.add(rule);
-				}
+					if(rule != null) {
+						if(!ruleMap.containsKey(rule.getClassName())) {
+							ruleMap.put(rule.getClassName(), rule);
+						}
+					}
+				} 
 			}
 		}
 		catch (IOException e) {
-			return new ArrayList<>();
+			throw new CryptoAnalysisException(e.getMessage());
 		}
-
-		// TODO: Decide what happens with potential duplicates
-		return rules.stream().filter((x) -> x != null).collect(Collectors.toList());
-	}
+		
+		return new ArrayList<>(ruleMap.values());
+	}	
 
 	private static void findCryptSLFiles(File directory, boolean recursive, Collection<File> resultCollection) {
 		for (File file: directory.listFiles())
@@ -102,18 +133,21 @@ public class CrySLRuleReader {
 		}
 	}
 
-	private  static CrySLRule getCrySLRuleFromZipEntry(ZipEntry entry, ZipFile zip, File zipFile)
+	private static CrySLRule getCrySLRuleFromZipEntry(ZipEntry entry, ZipFile zip, File zipFile) throws CryptoAnalysisException
 	{
 		if (entry.isDirectory() || !entry.getName().endsWith(CrySLModelReader.cryslFileEnding))
-			return null;
+			throw new CryptoAnalysisException("ZIP entry is a directory or not a CrySL file");
+		
+		CrySLRule rule = null;
 		try {
 			String name = createUniqueZipEntryName(zipFile, entry);
-			CrySLRule rule = getReader().readRule(zip.getInputStream(entry), name);
-			return rule;
+			rule = getReader().readRule(zip.getInputStream(entry), name);
 		}
-		catch (IOException ex) {
-			return null;
+		catch (IllegalArgumentException | IOException | NoSuchAlgorithmException ex) {
+			ex.printStackTrace();
 		}
+		return rule;
+
 	}
 
 	// For zip file entries there is no real URI. Using the raw absolute path of the zip file will cause a exception
@@ -123,20 +157,18 @@ public class CrySLRuleReader {
 	// This scheme has the properties that it still is unique system-wide,
 	// The hash will be the same for the same file, so you could know if two rules come from the same ruleset file
 	// and you still can get the information of the zipped file.
-	private static String createUniqueZipEntryName(File zipFile, ZipEntry zipEntry) {
+	private static String createUniqueZipEntryName(File zipFile, ZipEntry zipEntry) throws NoSuchAlgorithmException, CryptoAnalysisException {
 		if (!zipFile.exists() || !zipFile.isFile() || zipEntry == null)
-			return null;
+			throw new CryptoAnalysisException("The specified path is not a ZIP file " + zipFile.getAbsolutePath());
+		
 		StringBuilder sb = new StringBuilder();
 
 		String partFileName;
-		try {
-			MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
-			messageDigest.update(zipFile.getAbsolutePath().getBytes());
-			partFileName = bytesToHex(messageDigest.digest());
-		}
-		catch (NoSuchAlgorithmException e) {
-			partFileName = zipFile.getName();
-		}
+		
+		MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
+		messageDigest.update(zipFile.getAbsolutePath().getBytes());
+		partFileName = bytesToHex(messageDigest.digest());
+	
 
 		sb.append(partFileName);
 		sb.append(File.separator);

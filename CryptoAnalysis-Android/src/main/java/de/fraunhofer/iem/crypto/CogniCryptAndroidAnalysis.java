@@ -10,6 +10,7 @@ import crypto.analysis.CryptoScanner;
 import crypto.analysis.errors.AbstractError;
 import crypto.cryslhandler.CrySLModelReader;
 import crypto.cryslhandler.CryslReaderUtils;
+import crypto.exceptions.CryptoAnalysisException;
 import crypto.reporting.CollectErrorListener;
 import crypto.rules.CrySLRule;
 import crypto.rules.CrySLRuleReader;
@@ -33,6 +34,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+
+import crypto.reporting.CommandLineReporter;
 
 public class CogniCryptAndroidAnalysis {
 
@@ -159,7 +162,12 @@ public class CogniCryptAndroidAnalysis {
 	}
 
 	public static void main(String... args) {
-		CogniCryptAndroidAnalysis analysis = new CogniCryptAndroidAnalysis(args[0], args[1], args[2], Lists.newArrayList());
+		CogniCryptAndroidAnalysis analysis;
+		if (args[3] != null) {
+			analysis = new CogniCryptAndroidAnalysis(args[0], args[1], args[2], args[3], Lists.<String>newArrayList());
+		} else {
+			analysis = new CogniCryptAndroidAnalysis(args[0], args[1], args[2], Lists.<String>newArrayList());
+		}
 		analysis.run();
 	}
 
@@ -195,10 +203,12 @@ public class CogniCryptAndroidAnalysis {
 		prepareAnalysis();
 
 		final ObservableStaticICFG icfg = new ObservableStaticICFG(new BoomerangICFG(false));
+		List<CrySLRule> rules = getRules();
 
 		final CrySLResultsReporter reporter = new CrySLResultsReporter();
 		CollectErrorListener errorListener = new CollectErrorListener();
 		reporter.addReportListener(errorListener);
+		reporter.addReportListener(new CommandLineReporter(outputDir, rules));
 		CryptoScanner scanner = new CryptoScanner() {
 
 			@Override
@@ -212,7 +222,7 @@ public class CogniCryptAndroidAnalysis {
 			}
 
 		};
-		List<CrySLRule> rules = getRules();
+
 		logger.info("Loaded " + rules.size() + " CrySL rules");
 		logger.info("Running CogniCrypt Analysis");
 		scanner.scan(rules);
