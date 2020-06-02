@@ -104,10 +104,10 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>2.22.2</version>
 				<configuration>
-					<argLine>-Xmx10G -Xms256M -Xss128M -Dmaven.home="${maven.home}"</argLine>
+					<argLine>-Xmx12G -Xms512M -Xss256M -Dmaven.home="${maven.home}"</argLine>
 					<reportsDirectory>../shippable/testresults</reportsDirectory>
 					<trimStackTrace>false</trimStackTrace>
-					<forkCount>1</forkCount>
+					<forkCount>3</forkCount>
 					<reuseForks>true</reuseForks>
 				</configuration>
 				<dependencies>
