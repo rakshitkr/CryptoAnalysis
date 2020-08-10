@@ -8,6 +8,7 @@
 	<version>0.0.2-SNAPSHOT</version>
 	<packaging>pom</packaging>
 	<name>CryptoAnalysis-parent</name>
+	
 	<modules>
 		<module>CryptoAnalysis</module>
 		<module>CryptoAnalysis-Android</module>
